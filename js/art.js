@@ -1564,11 +1564,11 @@ const Art = (() => {
   }
 
   const PORTRAIT_SRC = {
-    jk: "assets/jk-character.png?v=2",
-    qinche: "assets/qinche-character.png?v=2",
-    cotton: "assets/cotton-character.png?v=2",
-    tangtang: "assets/tangtang-character.png?v=2",
-    marsh: "assets/marshmallow-character.png?v=2",
+    jk: "assets/jk-character.png?v=5",
+    qinche: "assets/qinche-character.png?v=5",
+    cotton: "assets/cotton-character.png?v=5",
+    tangtang: "assets/tangtang-character.png?v=5",
+    marsh: "assets/marshmallow-character.png?v=5",
   };
   const portraits = {};
   for (const [id, src] of Object.entries(PORTRAIT_SRC)) {

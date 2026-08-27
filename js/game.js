@@ -66,6 +66,7 @@
   const banquetCaption = document.getElementById("banquet-caption");
   const wishOverlay = document.getElementById("wish-overlay");
   const wishCount = document.getElementById("wish-count");
+  const wishTab = document.getElementById("wish-tab");
   const bdaySong = document.getElementById("bday-song");
   const bookPages = document.getElementById("book-pages");
   const bookInd = document.getElementById("book-page-ind");
@@ -531,7 +532,7 @@
     if (!el || !id) return;
     if (el.getAttribute("data-id") === id) return;
     const file = id === "marsh" ? "marshmallow" : id;
-    el.src = `assets/${file}-character.png?v=2`;
+    el.src = `assets/${file}-character.png?v=5`;
     el.setAttribute("data-id", id);
   }
 
@@ -868,8 +869,12 @@
     if (!banquet) {
       if (profile.husbandFollow) syncHusbandBeside();
       followFromTrail(followPet, 26);
-    } else if (profile.husbandFollow) {
-      syncHusbandBeside();
+    } else if (banquet.husband && banquet.husbandId) {
+      husband.x = banquet.husband.x;
+      husband.y = banquet.husband.y;
+      husband.dir = banquet.husband.dir || "up";
+      husband.pose = "sit";
+      husband.moving = false;
     }
     updateDucks();
   }
@@ -1689,24 +1694,55 @@
     }
   }
 
+  function kitchenBanquetSeats() {
+    const chairs = (room.items || [])
+      .filter((it) => it.kind === "chair")
+      .slice()
+      .sort((a, b) => a.y - b.y || a.x - b.x);
+    // Layout: TL, TR, BL, BR around the dining table.
+    return {
+      npc: chairs[0] || null,
+      husband: chairs[3] || chairs[1] || null,
+      player: chairs[2] || null,
+    };
+  }
+
+  function seatAtChair(ent, chair, dir) {
+    if (!ent || !chair) return;
+    ent.x = chair.x + 4;
+    ent.y = chair.y + 4;
+    ent.dir = dir;
+    ent.pose = "sit";
+    ent.moving = false;
+  }
+
   function startBanquet() {
     if (banquet || room.id !== "kitchen") return;
     hideTalk();
     closePanels();
     const npcHome = room.npc ? { x: room.npc.x, y: room.npc.y, dir: room.npc.dir } : null;
-    player.x = 9.85 * TILE;
-    player.y = 6.25 * TILE;
-    player.dir = "up";
-    player.moving = false;
-    player.pose = "sit";
+    const seats = kitchenBanquetSeats();
+    seatAtChair(player, seats.player, "up");
+    if (!seats.player) {
+      player.x = 9.15 * TILE + 4;
+      player.y = 6.55 * TILE + 4;
+      player.dir = "up";
+      player.moving = false;
+      player.pose = "sit";
+    }
     if (room.npc) {
-      room.npc.x = 9.85 * TILE;
-      room.npc.y = 3.05 * TILE;
-      room.npc.dir = "down";
-      room.npc.pose = "sit";
+      seatAtChair(room.npc, seats.npc, "down");
+      if (!seats.npc) {
+        room.npc.x = 9.15 * TILE + 4;
+        room.npc.y = 3.55 * TILE + 4;
+        room.npc.dir = "down";
+        room.npc.pose = "sit";
+        room.npc.moving = false;
+      }
     }
     const bringHusband = !!(profile.husbandFollow && profile.husband);
     const bringPet = !!(profile.petFollow && profile.pet);
+    const husbandSeat = seats.husband;
     banquet = {
       phase: "serve",
       t: 0,
@@ -1718,19 +1754,32 @@
       cakeTo: { x: TABLE.x + 6, y: TABLE.y + 1 },
       steakTo: { x: TABLE.x + 26, y: TABLE.y + 6 },
       husband: bringHusband
-        ? { x: player.x + 12, y: player.y, dir: "up", moving: false, pose: "sit" }
+        ? {
+            x: husbandSeat ? husbandSeat.x + 4 : player.x + 22,
+            y: husbandSeat ? husbandSeat.y + 4 : player.y,
+            dir: "up",
+            moving: false,
+            pose: "sit",
+          }
         : null,
       pet: bringPet
-        ? { x: player.x - 14, y: player.y + 4 }
+        ? { x: player.x - 16, y: player.y + 6 }
         : null,
       husbandId: bringHusband ? profile.husband : null,
       petId: bringPet ? profile.pet : null,
     };
-    if (bringHusband) syncHusbandBeside();
+    if (bringHusband && banquet.husband) {
+      husband.x = banquet.husband.x;
+      husband.y = banquet.husband.y;
+      husband.dir = banquet.husband.dir;
+      husband.pose = "sit";
+      husband.moving = false;
+    }
     banquetCaption.textContent = `${GIFT.npcName} 给 ${GIFT.playerName} 端上了生日蛋糕和一块牛排`;
     if (banquetExitBtn) banquetExitBtn.classList.remove("hidden");
     banquetCaption.classList.remove("hidden");
     wishOverlay.classList.add("hidden");
+    if (wishTab) wishTab.classList.add("hidden");
     updateRoomTip();
   }
 
@@ -1761,7 +1810,7 @@
     const steakPos = banquetFood("steak");
     Art.steak(v, steakPos.x, steakPos.y);
     Art.cake(v, cakePos.x, cakePos.y, banquet.candlesLit, time);
-    if (banquet.phase === "choir" || banquet.phase === "candles" || banquet.phase === "wish" || banquet.phase === "speech") {
+    if (banquet.phase === "choir" || banquet.phase === "candles" || banquet.phase === "wishTab" || banquet.phase === "wish" || banquet.phase === "speech") {
       const spots = [7.0, 8.6, 12.2, 13.8];
       const k = banquet.phase === "choir" ? ease((banquet.t - 200) / 900) : 1;
       spots.forEach((sx, i) => {
@@ -1810,12 +1859,25 @@
     if (!banquet || banquet.phase !== "candles") return;
     banquet.candlesLit = true;
     spawnCandleSparks();
+    banquet.phase = "wishTab";
+    banquet.t = 0;
+    banquetCaption.textContent = "蜡烛灭了。点开许愿吧";
+    banquetCaption.classList.remove("hidden");
+    wishOverlay.classList.add("hidden");
+    if (wishTab) wishTab.classList.remove("hidden");
+    updateRoomTip();
+  }
+
+  function beginWish() {
+    if (!banquet || banquet.phase !== "wishTab") return;
     banquet.phase = "wish";
     banquet.t = 0;
     banquet.wishLeft = 10000;
     banquetCaption.classList.add("hidden");
+    if (wishTab) wishTab.classList.add("hidden");
     wishCount.textContent = "10";
     wishOverlay.classList.remove("hidden");
+    updateRoomTip();
   }
 
   function endBanquet() {
@@ -1824,6 +1886,7 @@
     if (paused) pausedBgmWasPlaying = true;
     banquetCaption.classList.add("hidden");
     wishOverlay.classList.add("hidden");
+    if (wishTab) wishTab.classList.add("hidden");
     if (banquet && banquet.npcHome && room.npc) {
       room.npc.x = banquet.npcHome.x;
       room.npc.y = banquet.npcHome.y;
@@ -1840,12 +1903,11 @@
   function updateBanquet(dt) {
     if (!banquet) return;
     if (banquet.husband && banquet.husbandId) {
-      syncHusbandBeside();
-      banquet.husband.x = husband.x;
-      banquet.husband.y = husband.y;
-      banquet.husband.dir = husband.dir;
-      banquet.husband.pose = husband.pose || "sit";
-      banquet.husband.moving = false;
+      husband.x = banquet.husband.x;
+      husband.y = banquet.husband.y;
+      husband.dir = banquet.husband.dir || "up";
+      husband.pose = "sit";
+      husband.moving = false;
     }
     if (banquet.pet && banquet.petId && profile.petFollow) {
       followPet.x = banquet.pet.x;
@@ -1909,6 +1971,8 @@
     if (talking || uiOpen() || mode !== "play") return "";
     if (banquet) {
       if (banquet.phase === "candles") return "点击蜡烛";
+      if (banquet.phase === "wishTab") return "点击许愿";
+      if (banquet.phase === "wish") return "闭上眼睛许愿";
       return "";
     }
     const spot = hotspotNear();
@@ -2077,7 +2141,7 @@
       drawScreenshotCharacter(out, husbandCharacter, husband, true, profile.husband, 0.185);
     }
     if (showActors && !barBusy && profile.petFollow && profile.pet) {
-      drawScreenshotCharacter(out, petCharacter, followPet, true, profile.pet, 0.115);
+      drawScreenshotCharacter(out, petCharacter, followPet, true, profile.pet, 0.055);
     }
     out.font = 'bold 24px "PingFang SC", sans-serif';
     out.textAlign = "center";
@@ -3626,6 +3690,7 @@
   });
   if (screenshotBtn) screenshotBtn.addEventListener("click", takeScreenshot);
   if (banquetExitBtn) banquetExitBtn.addEventListener("click", endBanquet);
+  if (wishTab) wishTab.addEventListener("click", beginWish);
   applyGameVolume();
 
   PetPlay.bind({
