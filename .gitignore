@@ -1,0 +1,8 @@
+.DS_Store
+.venv-img/
+node_modules/
+.vercel/
+.netlify/
+.wrangler/
+*.log
+.cursor/

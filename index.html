@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aiko&amp;17的家</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&family=ZCOOL+QingKe+HuangYou&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css?v=20260826hd" />
+</head>
+<body>
+  <div id="frame">
+    <div id="bezel">
+      <canvas id="game" width="1280" height="720"></canvas>
+      <div id="character-overlays" aria-hidden="true">
+        <img id="aiko-character" class="game-character" src="assets/aiko-character-v3.png" alt="" />
+        <img id="seventeen-character" class="game-character" src="assets/17-character-v3.png" alt="" />
+        <img id="husband-character" class="game-character game-character-husband" src="assets/jk-character.png?v=2" alt="" data-id="jk" />
+        <img id="pet-character" class="game-character game-character-pet" src="assets/cotton-character.png?v=2" alt="" data-id="cotton" />
+      </div>
+      <div id="door-guides" aria-hidden="true"></div>
+      <div id="game-controls" class="game-controls hidden">
+        <button id="pause-btn" type="button">暂停</button>
+        <div class="volume-control">
+          <button id="volume-btn" type="button">音量</button>
+          <div id="volume-panel" class="volume-panel hidden">
+            <button id="mute-btn" type="button">静音</button>
+            <input id="volume-slider" type="range" min="0" max="100" value="32" aria-label="游戏音量" />
+          </div>
+        </div>
+        <button id="screenshot-btn" type="button">截图</button>
+        <button id="banquet-exit-btn" class="hidden" type="button">退出生日宴</button>
+      </div>
+      <div id="pause-overlay" class="pause-overlay hidden">已暂停</div>
+
+      <div id="title-screen" class="overlay">
+        <h1>Aiko&amp;17的家</h1>
+        <button id="start-btn" type="button">推开门</button>
+      </div>
+
+      <div id="rules-screen" class="overlay hidden">
+        <div class="rules-card">
+          <h2>进门之前</h2>
+          <div class="rules-body">
+            <p>这是 Aiko 和 17 的家。没有任务，也没有昼夜。想逛就逛，想坐就坐。</p>
+            <h3>怎么走</h3>
+            <p>WASD 或方向键移动。走近能互动的东西，按 E、空格，或直接点它。</p>
+            <p>P 打开背包，选伙伴和宠物。M 打开地图，点房间就能过去。</p>
+            <h3>家里</h3>
+            <p>每个房间都可以摸一摸。17 会跟在附近，也可以走过去跟她说话。</p>
+            <h3>酒吧</h3>
+            <p>客房西边有一家你们俩一起开的酒吧。不想经营就关着，它只是一间普通房间。</p>
+            <p>想玩的时候翻吧台上的牌子「营业」。客人会进来点单。你在调酒台点一下同名饮品或小吃，17 负责送餐、洗碗，忙的时候会喊你。</p>
+            <p>配错了也能端出去，客人会喝一口，少给一点钱。打烊后会有一张小结算，钱进钱包，可以继续装修这家店。</p>
+            <p>一次营业大约几分钟，随时可以打烊。</p>
+          </div>
+          <button id="rules-ok" type="button">看完了，走进家里</button>
+        </div>
+      </div>
+
+      <div id="room-banner" class="hidden">
+        <span id="room-banner-text">客厅</span>
+      </div>
+
+      <div id="room-tip" class="hidden">桌上打开留言簿</div>
+      <div id="chip-label" class="world-label hidden">幸福黄油薯片 ×6</div>
+      <div id="marsh-label" class="world-label hidden">Marshmallow</div>
+      <div id="action-toast" class="hidden"></div>
+      <div id="npc-toast" class="hidden"><span class="who">17</span><span id="npc-toast-text"></span></div>
+      <div id="interact-hint" class="hidden">按 E 看看她</div>
+
+      <div id="talk-box" class="hidden">
+        <div class="talk-name" id="talk-name">17</div>
+        <p class="talk-text" id="talk-text"></p>
+        <div class="talk-next">按 E / 点击 继续</div>
+      </div>
+
+      <div id="hud">
+        <div class="hud-chip" id="hud-room">花园</div>
+        <div class="hud-chip" id="hud-gold">0G</div>
+        <div class="hud-chip hidden" id="hud-bar"></div>
+        <button id="bar-rules-btn" type="button" class="hud-chip hud-btn hidden">酒吧规则</button>
+        <button id="bar-exit-btn" type="button" class="hud-chip hud-btn hidden">结束营业</button>
+        <button id="profile-btn" type="button" class="hud-chip hud-btn hidden">背包</button>
+        <button id="map-btn" type="button" class="hud-chip hud-btn hidden">地图</button>
+        <button id="area-guide-btn" type="button" class="hud-chip hud-btn hidden">区域互动</button>
+        <div class="hud-chip muted">↑↓←→ 移动 · P 背包 · M 地图</div>
+      </div>
+
+      <div id="area-guide-panel" class="panel hidden" role="dialog" aria-label="区域互动提示">
+        <div class="panel-head">
+          <h2 id="area-guide-title">区域互动</h2>
+          <button type="button" class="panel-close" data-close="area-guide-panel">×</button>
+        </div>
+        <p class="tiny">拖动标题可移动 · 走近后按 E、空格或点击。</p>
+        <div id="area-guide-list" class="area-guide-list"></div>
+      </div>
+
+      <div id="profile-panel" class="panel hidden" role="dialog" aria-label="背包">
+        <div class="panel-head">
+          <h2>背包</h2>
+          <button type="button" class="panel-close" data-close="profile-panel">×</button>
+        </div>
+        <div class="tabs">
+          <button type="button" class="tab on" data-tab="husband">伙伴</button>
+          <button type="button" class="tab" data-tab="pets">宠物</button>
+        </div>
+        <div class="tab-page on" data-page="husband">
+          <label class="follow-switch">
+            <input id="husband-follow" type="checkbox" />
+            <span>今天让他跟着我</span>
+          </label>
+          <p class="tiny">两位里只能选一位哦 · 跟着时会牵着手</p>
+          <div id="husband-grid" class="choice-grid two"></div>
+        </div>
+        <div class="tab-page" data-page="pets">
+          <label class="follow-switch">
+            <input id="pet-follow" type="checkbox" />
+            <span>今天带宠物出门</span>
+          </label>
+          <p class="tiny">棉花和糖糖一次只能带一位，可以和伙伴一起走</p>
+          <div id="pet-grid" class="choice-grid two"></div>
+        </div>
+      </div>
+
+      <div id="book-panel" class="panel hidden" role="dialog" aria-label="留言簿">
+        <div class="panel-head">
+          <h2>留言簿</h2>
+          <button type="button" class="panel-close" data-close="book-panel">×</button>
+        </div>
+        <div id="book-pages" class="book-pages"></div>
+        <div class="book-nav">
+          <button type="button" id="book-prev">上一页</button>
+          <span id="book-page-ind">1 / 1</span>
+          <button type="button" id="book-next">下一页</button>
+        </div>
+        <form id="book-form">
+          <input id="book-input" maxlength="48" placeholder="写下今天想说的话…" autocomplete="off" />
+          <button type="submit">写下</button>
+        </form>
+      </div>
+
+      <div id="menu-panel" class="panel menu-card hidden" role="dialog" aria-label="冰箱菜单">
+        <div class="panel-head">
+          <h2>冰箱上的菜单</h2>
+          <button type="button" class="panel-close" data-close="menu-panel">×</button>
+        </div>
+        <div class="sticky-note">
+          <p class="menu-when">今晚菜单</p>
+          <p class="menu-line">价值500万的牛排 + 鹅肝 + 高级红酒 + 超级无敌好吃的草莓蛋糕</p>
+          <p class="menu-when">明晚菜单</p>
+          <p class="menu-line">白煮蛋沾饭扫光 + 幸福黄油薯片</p>
+        </div>
+        <button type="button" class="panel-link" id="menu-to-fridge">打开冰箱</button>
+      </div>
+
+      <div id="fridge-panel" class="panel fridge-card hidden" role="dialog" aria-label="打开冰箱">
+        <div class="panel-head">
+          <h2>打开冰箱</h2>
+          <button type="button" class="panel-close" data-close="fridge-panel">×</button>
+        </div>
+        <p class="tiny">冷气扑出来了</p>
+        <div class="fridge-grid">
+          <div class="fridge-item">
+            <canvas id="food-beef" width="96" height="80"></canvas>
+            <div class="name">山姆超市牛肉卷</div>
+            <div class="count">×10</div>
+          </div>
+          <div class="fridge-item">
+            <canvas id="food-foie" width="88" height="80"></canvas>
+            <div class="name">鹅肝</div>
+            <div class="count">×10</div>
+          </div>
+          <div class="fridge-item">
+            <canvas id="food-don" width="96" height="80"></canvas>
+            <div class="name">海鲜丼</div>
+            <div class="count">×5</div>
+          </div>
+        </div>
+        <button type="button" class="panel-link" id="fridge-to-menu">看门上的菜单</button>
+      </div>
+
+      <div id="chips-panel" class="panel chips-card hidden" role="dialog" aria-label="幸福黄油薯片">
+        <div class="panel-head">
+          <h2>墙边的箱子</h2>
+          <button type="button" class="panel-close" data-close="chips-panel">×</button>
+        </div>
+        <canvas id="chips-hero" width="168" height="192"></canvas>
+        <p class="chips-name">幸福黄油薯片</p>
+        <p class="chips-count">六箱</p>
+        <p class="tiny">Calbee しあわせバタ～ · 明晚菜单也写了这个</p>
+      </div>
+
+      <div id="choice-panel" class="panel hidden" role="dialog" aria-label="选择">
+        <div class="panel-head">
+          <h2 id="choice-title">看看</h2>
+          <button type="button" class="panel-close" data-close="choice-panel">×</button>
+        </div>
+        <p id="choice-body" class="tiny"></p>
+        <div id="choice-actions"></div>
+      </div>
+
+      <div id="tv-panel" class="panel tv-card hidden" role="dialog" aria-label="生日祝福">
+        <div class="panel-head">
+          <h2>客厅电视</h2>
+          <button type="button" class="panel-close" data-close="tv-panel">×</button>
+        </div>
+        <p class="tv-from">17 → Aiko</p>
+        <p class="tv-title">生日快乐</p>
+        <p class="tv-wish">希望你暴富</p>
+        <p class="tv-wish">也希望你越来越美丽</p>
+        <p class="tv-foot">—— 就写在这台电视上，每天回家都能看见</p>
+      </div>
+
+      <div id="banquet-caption" class="hidden"></div>
+      <div id="wish-overlay" class="hidden">
+        <div class="wish-title">许愿</div>
+        <div id="wish-count">10</div>
+      </div>
+
+      <div id="petplay-hud" class="hidden">
+        <div id="petplay-scores"></div>
+        <p id="petplay-line"></p>
+        <p id="petplay-ability"></p>
+        <button id="petplay-exit" type="button">退出游戏</button>
+      </div>
+      <div id="petplay-count" class="hidden">3</div>
+
+      <div id="arcade-overlay" class="hidden">
+        <div class="arcade-frame">
+          <canvas id="arcade-canvas" width="320" height="180"></canvas>
+          <p id="arcade-hud">接金币  0 / 6</p>
+          <p class="tiny">← → 移动 · Esc 退出</p>
+        </div>
+      </div>
+      <audio id="bday-song" preload="auto">
+        <source src="audio/hbd.mp3?v=20260825b" type="audio/mpeg" />
+      </audio>
+
+      <div id="mix-panel" class="panel mix-card hidden" role="dialog" aria-label="调酒台">
+        <div class="panel-head">
+          <h2>调酒台</h2>
+          <button type="button" class="panel-close" data-close="mix-panel">×</button>
+        </div>
+        <p class="tiny" id="mix-hint">看客人的订单，点一下同名饮品就做好了。</p>
+        <p class="panel-label">饮品</p>
+        <div id="mix-cups" class="mix-grid"></div>
+        <p class="panel-label">小吃</p>
+        <div id="mix-snacks" class="mix-grid"></div>
+      </div>
+
+      <div id="bar-rules-screen" class="overlay hidden" role="dialog" aria-label="酒吧规则">
+        <div class="rules-card">
+          <h2>开业之前</h2>
+          <div class="rules-body">
+            <p>这家店是 Aiko 和 17 一起开的。不想忙的时候就关着，它只是一间普通房间。</p>
+            <h3>这一轮怎么走</h3>
+            <p>翻牌子「营业」才会来客人。一次大约几分钟，随时可以再翻牌子「打烊」。打烊后有一张小结算，钱进钱包。</p>
+            <p>门灯亮着表示正在营业。店里同时最多三位客人，大家也会耐心等候。</p>
+            <h3>如何打烊</h3>
+            <p>营业中走到门口的营业牌旁，按 E 或点击牌子，就会立即打烊并显示本次结算。</p>
+            <h3>调酒</h3>
+            <p>你负责制作：看客人的订单，在调酒台点一下同名饮品或小吃，然后端给客人。</p>
+            <p>不用记杯子和配方，选对名字就会出 ✨ Perfect。</p>
+            <h3>17</h3>
+            <p>她是合伙人，不是店员。你做好，她去送。忙的时候会喊你。你实在顾不过来，她会帮一次，然后越帮越嫌弃。</p>
+            <h3>客人</h3>
+            <p>心情只看等待和对错：😊 😐 😡。客人不会临时改订单。</p>
+            <h3>钱</h3>
+            <p>小费和客人留下的小东西放柜子里。黑板上可以看菜单、用钱包升级店和配方。</p>
+          </div>
+          <button id="bar-rules-ok" type="button">看完了，开始营业</button>
+        </div>
+      </div>
+
+      <div id="bar-close-panel" class="panel tv-card hidden" role="dialog" aria-label="本次营业">
+        <div class="panel-head">
+          <h2>本次营业</h2>
+        </div>
+        <div id="bar-close-stats" class="bar-stats"></div>
+        <p id="bar-close-line" class="tv-wish"></p>
+        <button type="button" class="panel-link" id="bar-close-ok">收下了</button>
+      </div>
+
+      <div id="bar-shop-panel" class="panel hidden" role="dialog" aria-label="菜单和升级">
+        <div class="panel-head">
+          <h2>黑板</h2>
+          <button type="button" class="panel-close" data-close="bar-shop-panel">×</button>
+        </div>
+        <p class="tiny">菜单随时可以看。赚到的钱用来把我们的店再弄好一点。</p>
+        <div id="bar-shop-body"></div>
+      </div>
+
+      <div id="bar-cabinet-panel" class="panel chips-card hidden" role="dialog" aria-label="客人留下的小东西">
+        <div class="panel-head">
+          <h2>客人留下的小东西</h2>
+          <button type="button" class="panel-close" data-close="bar-cabinet-panel">×</button>
+        </div>
+        <div id="bar-cabinet-grid" class="souv-grid"></div>
+      </div>
+
+      <div id="map-panel" class="panel hidden" role="dialog" aria-label="地图">
+        <div class="panel-head">
+          <h2>地图</h2>
+          <button type="button" class="panel-close" data-close="map-panel">×</button>
+        </div>
+        <p class="tiny">点房间就能过去</p>
+        <div id="house-map" class="house-map"></div>
+      </div>
+    </div>
+  </div>
+
+  <audio id="bgm" src="audio/cloud-country.mp3" loop preload="auto"></audio>
+
+  <script src="js/art.js?v=20260826portraits"></script>
+  <script src="js/world.js?v=20260825g"></script>
+  <script src="js/bar.js?v=20260825a"></script>
+  <script src="js/pets.js?v=20260826portraits"></script>
+  <script src="js/game.js?v=20260826hd"></script>
+</body>
+</html>
