@@ -1,6 +1,7 @@
 .DS_Store
 .venv-img/
 node_modules/
+dist/
 .vercel/
 .netlify/
 .wrangler/

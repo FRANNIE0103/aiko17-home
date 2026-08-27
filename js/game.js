@@ -517,15 +517,16 @@
     if (!useOverlay) return;
     const rect = canvas.getBoundingClientRect();
     const x = ((ent.x + 8 - cam.x) / VIEW_W) * rect.width;
-    const seatDrop = pose === "sit" ? rect.height * 0.04 : pose === "lie" ? rect.height * 0.06 : 0;
+    const seatDrop = !hd && pose === "sit" ? rect.height * 0.04 : !hd && pose === "lie" ? rect.height * 0.06 : 0;
     const y = ((ent.y + 22 - cam.y) / VIEW_H) * rect.height + seatDrop;
     const flip = ent.dir === "left" ? -1 : 1;
     el.style.left = `${x}px`;
     el.style.top = `${y}px`;
     el.style.transform = `translate(-50%, -100%) scaleX(${flip})`;
     el.classList.toggle("moving", !!ent.moving && pose === "stand");
-    el.classList.toggle("seated", pose === "sit");
-    el.classList.toggle("lying", pose === "lie");
+    // HD portraits are full-body; don't clip legs for "sit"
+    el.classList.toggle("seated", pose === "sit" && !hd);
+    el.classList.toggle("lying", pose === "lie" && !hd);
   }
 
   function setOverlayPortrait(el, id, kind) {
@@ -542,12 +543,14 @@
     placeCharacter(seventeenCharacter, room.npc, show && !!room.npc && !room.npcOut);
 
     const barBusy = room.id === "bar" && Bar.isOpen();
-    const showHusband = show && !barBusy && profile.husbandFollow && profile.husband;
-    setOverlayPortrait(husbandCharacter, profile.husband, "husband");
+    const banquetHusbandId = banquet && banquet.husbandId ? banquet.husbandId : null;
+    const banquetPetId = banquet && banquet.petId ? banquet.petId : null;
+    const showHusband = show && !barBusy && !!(banquetHusbandId || (profile.husbandFollow && profile.husband));
+    setOverlayPortrait(husbandCharacter, banquetHusbandId || profile.husband, "husband");
     placeCharacter(husbandCharacter, husband, showHusband, { hd: true });
 
-    const showPet = show && !barBusy && profile.petFollow && profile.pet;
-    setOverlayPortrait(petCharacter, profile.pet, "pet");
+    const showPet = show && !barBusy && !!(banquetPetId || (profile.petFollow && profile.pet));
+    setOverlayPortrait(petCharacter, banquetPetId || profile.pet, "pet");
     placeCharacter(petCharacter, followPet, showPet, { hd: true });
   }
 
@@ -869,12 +872,8 @@
     if (!banquet) {
       if (profile.husbandFollow) syncHusbandBeside();
       followFromTrail(followPet, 26);
-    } else if (banquet.husband && banquet.husbandId) {
-      husband.x = banquet.husband.x;
-      husband.y = banquet.husband.y;
-      husband.dir = banquet.husband.dir || "up";
-      husband.pose = "sit";
-      husband.moving = false;
+    } else {
+      syncBanquetCompanions();
     }
     updateDucks();
   }
@@ -1189,8 +1188,7 @@
     if (mode !== "title") {
       pushActor(drawables, player, "player", 22);
       if (banquet) {
-        if (banquet.husband && banquet.husbandId) {
-          // HD overlay handles husband while following
+        if (banquet.husband && banquet.husbandId && banquet.husband.pose === "sit") {
           drawHandHold(drawables, player, banquet.husband);
         }
         if (banquet.pet && banquet.petId && !(profile.petFollow && profile.pet === banquet.petId)) {
@@ -1716,6 +1714,51 @@
     ent.moving = false;
   }
 
+  function banquetAudienceSpot() {
+    // Stand on the far side of the table (east), facing the cake.
+    return {
+      husband: { x: 13.5 * TILE, y: 5.05 * TILE, dir: "left", pose: "stand" },
+      pet: { x: 14.25 * TILE, y: 5.9 * TILE },
+    };
+  }
+
+  function banquetCompanionsAtAudience() {
+    return ["choir", "candles", "wishTab", "wish", "speech"].includes(banquet && banquet.phase);
+  }
+
+  function syncBanquetCompanions() {
+    if (!banquet) return;
+    const audience = banquetCompanionsAtAudience();
+    const spot = banquetAudienceSpot();
+    if (banquet.husband && banquet.husbandId) {
+      if (audience) {
+        banquet.husband.x = spot.husband.x;
+        banquet.husband.y = spot.husband.y;
+        banquet.husband.dir = spot.husband.dir;
+        banquet.husband.pose = "stand";
+      } else {
+        banquet.husband.pose = "sit";
+        banquet.husband.dir = banquet.husband.dir || "up";
+      }
+      banquet.husband.moving = false;
+      husband.x = banquet.husband.x;
+      husband.y = banquet.husband.y;
+      husband.dir = banquet.husband.dir;
+      husband.pose = banquet.husband.pose;
+      husband.moving = false;
+    }
+    if (banquet.pet && banquet.petId) {
+      if (audience) {
+        banquet.pet.x = spot.pet.x;
+        banquet.pet.y = spot.pet.y;
+      }
+      followPet.x = banquet.pet.x;
+      followPet.y = banquet.pet.y;
+      followPet.moving = false;
+      followPet.dir = "left";
+    }
+  }
+
   function startBanquet() {
     if (banquet || room.id !== "kitchen") return;
     hideTalk();
@@ -1740,6 +1783,7 @@
         room.npc.moving = false;
       }
     }
+    // Whoever is currently brought from the backpack.
     const bringHusband = !!(profile.husbandFollow && profile.husband);
     const bringPet = !!(profile.petFollow && profile.pet);
     const husbandSeat = seats.husband;
@@ -1768,13 +1812,7 @@
       husbandId: bringHusband ? profile.husband : null,
       petId: bringPet ? profile.pet : null,
     };
-    if (bringHusband && banquet.husband) {
-      husband.x = banquet.husband.x;
-      husband.y = banquet.husband.y;
-      husband.dir = banquet.husband.dir;
-      husband.pose = "sit";
-      husband.moving = false;
-    }
+    syncBanquetCompanions();
     banquetCaption.textContent = `${GIFT.npcName} 给 ${GIFT.playerName} 端上了生日蛋糕和一块牛排`;
     if (banquetExitBtn) banquetExitBtn.classList.remove("hidden");
     banquetCaption.classList.remove("hidden");
@@ -1902,18 +1940,7 @@
 
   function updateBanquet(dt) {
     if (!banquet) return;
-    if (banquet.husband && banquet.husbandId) {
-      husband.x = banquet.husband.x;
-      husband.y = banquet.husband.y;
-      husband.dir = banquet.husband.dir || "up";
-      husband.pose = "sit";
-      husband.moving = false;
-    }
-    if (banquet.pet && banquet.petId && profile.petFollow) {
-      followPet.x = banquet.pet.x;
-      followPet.y = banquet.pet.y;
-      followPet.moving = false;
-    }
+    syncBanquetCompanions();
     banquet.t += dt;
     if (banquet.phase === "serve") {
       if (banquet.t >= 2400) {
@@ -1921,6 +1948,7 @@
         banquet.t = 0;
         banquetCaption.textContent = "kinkiki合唱团来给kyk唱生日歌啦";
         playBirthdaySong();
+        syncBanquetCompanions();
       }
     } else if (banquet.phase === "choir") {
       const songDone = !!(bdaySong && bdaySong.ended);
@@ -1930,6 +1958,7 @@
         banquet.phase = "candles";
         banquet.t = 0;
         banquetCaption.textContent = `${GIFT.playerName}，点击蜡烛吧`;
+        syncBanquetCompanions();
       }
     } else if (banquet.phase === "wish") {
       banquet.wishLeft -= dt;

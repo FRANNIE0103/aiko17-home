@@ -1,0 +1,51 @@
+{
+  "name": "aiko17-home",
+  "version": "1.0.0",
+  "description": "Aiko&17的家 — birthday gift pixel home",
+  "author": "Frannie",
+  "main": "electron/main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "pack:win": "electron-builder --win portable --x64",
+    "pack:win:dir": "electron-builder --win dir --x64"
+  },
+  "build": {
+    "appId": "com.frannie.aiko17home",
+    "productName": "Aiko&17的家",
+    "copyright": "Copyright © Frannie",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "index.html",
+      "css/**/*",
+      "js/**/*",
+      "assets/**/*",
+      "audio/**/*",
+      "electron/**/*",
+      "!assets/_*",
+      "!**/.DS_Store"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ],
+      "artifactName": "Aiko17-Home-Windows-${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "Aiko17-Home-Windows-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false
+    }
+  },
+  "devDependencies": {
+    "electron": "^37.2.0",
+    "electron-builder": "^26.0.12"
+  }
+}
